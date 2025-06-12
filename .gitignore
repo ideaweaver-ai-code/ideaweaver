@@ -1,0 +1,4 @@
+downloaded_model/
+documents/
+tensorboard_logs/
+wandb/

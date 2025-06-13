@@ -1,4 +1,4 @@
-name: Basic IdeaWeaver Tests
+name: IdeaWeaver Tests
 
 on:
   push:

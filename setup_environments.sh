@@ -294,6 +294,9 @@ install_packages() {
     # Install torch first
     install_torch
 
+    # Force auto-gptq to build CPU-only (skip CUDA extensions)
+    export FORCE_CUDA=0
+
     # Install from requirements.txt
     local requirements_file="$script_dir/requirements.txt"
     if [[ -f "$requirements_file" ]]; then

@@ -1,0 +1,63 @@
+name: Basic IdeaWeaver Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+    
+    - name: Run basic CLI tests
+      run: |
+        # Test help command
+        ideaweaver --help
+        
+        # Test list-tasks command
+        ideaweaver list-tasks
+        
+        # Test validate command with a sample config
+        ideaweaver validate configs/training_config.yml
+        
+        # Test download command
+        ideaweaver download --model google/bert_uncased_L-2_H-128_A-2 --output-dir ./test_model
+        
+        # Test basic evaluation
+        ideaweaver evaluate ./test_model \
+          --tasks hellaswag \
+          --output-path results.json \
+          --report-to none \
+          --limit 10
+        
+        # Test RAG commands
+        ideaweaver rag list-kb
+        
+        # Test MCP commands
+        ideaweaver mcp list-servers
+        
+        # Test agent commands
+        ideaweaver agent --help
+        
+        # Test finetune commands
+        ideaweaver finetune --help
+        
+        # Test train commands
+        ideaweaver train --help 

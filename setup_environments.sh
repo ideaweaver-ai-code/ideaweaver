@@ -302,11 +302,15 @@ install_packages() {
 
     # Install from requirements.txt using --no-build-isolation
     local requirements_file="$script_dir/requirements.txt"
+    if [[ -n "${CI:-}" && -f "$script_dir/requirements-ci.txt" ]]; then
+        log_info "CI environment detected, using requirements-ci.txt (auto-gptq skipped)"
+        requirements_file="$script_dir/requirements-ci.txt"
+    fi
     if [[ -f "$requirements_file" ]]; then
-        log_info "Installing from requirements.txt with --no-build-isolation"
-        pip install --no-build-isolation -r "$requirements_file" || error_exit "Failed to install from requirements.txt"
+        log_info "Installing from $requirements_file with --no-build-isolation"
+        pip install --no-build-isolation -r "$requirements_file" || error_exit "Failed to install from $requirements_file"
     else
-        error_exit "requirements.txt not found at: $requirements_file"
+        error_exit "$requirements_file not found."
     fi
 
     # Create ideaweaver entry point

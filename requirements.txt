@@ -40,7 +40,6 @@ rank-bm25>=0.2.2
 sentence-transformers>=2.2.0
 
 # LLM and Model dependencies
-llama-cpp-python>=0.2.0
 gguf>=0.1.0
 peft>=0.7.0
 

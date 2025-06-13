@@ -24,11 +24,10 @@ jobs:
     - name: Setup IdeaWeaver Environment
       run: |
         chmod +x setup_environments.sh
-        ./setup_environments.sh
+        yes | ./setup_environments.sh
     
     - name: Run basic CLI tests
       run: |
         source ideaweaver-env/bin/activate
-        # Test help command
         ideaweaver --help
         

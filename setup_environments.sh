@@ -294,6 +294,9 @@ install_packages() {
     # Install torch first
     install_torch
 
+    # Install numpy before requirements to avoid build errors with auto-gptq
+    pip install numpy
+
     # Force auto-gptq to build CPU-only (skip CUDA extensions)
     export FORCE_CUDA=0
 

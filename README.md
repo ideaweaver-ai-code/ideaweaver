@@ -28,9 +28,6 @@ A comprehensive CLI tool for AI model training, evaluation, and deployment with 
 
 ```bash
 # One-line installation
-curl -LsSf https://raw.githubusercontent.com/ideaweaver-ai-code/ideaweaver/main/setup_environments.sh | sh
-
-# Or traditional installation
 git clone https://github.com/ideaweaver-ai-code/ideaweaver.git
 cd ideaweaver
 chmod +x setup_environments.sh

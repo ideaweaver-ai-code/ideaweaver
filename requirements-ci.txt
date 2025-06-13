@@ -1,0 +1,88 @@
+# Core ML and Deep Learning dependencies
+torch>=2.0.0
+transformers>=4.30.0
+accelerate>=0.24.0
+bitsandbytes>=0.41.0
+datasets>=2.0.0
+faiss-cpu>=1.7.4
+mlflow>=2.0.0
+numpy>=1.24.0
+pandas>=1.5.0
+scikit-learn>=1.3.0
+scipy
+trl>=0.7.0
+
+# Quantization dependencies (CPU only for Mac)
+autoawq>=0.1.0; platform_system != "Darwin"
+
+# AWS dependencies
+boto3>=1.37.9
+botocore>=1.37.9
+jmespath>=1.0.1
+s3transfer>=0.6.0
+
+# LangChain and related dependencies
+langchain>=0.1.0
+langchain-community>=0.0.20
+langchain-core>=0.3.0
+langchain-ollama>=0.1.0
+langchain-openai>=0.1.0
+langchain-qdrant>=0.1.0
+langchain-chroma>=0.1.4
+langchain-huggingface>=0.0.1
+langgraph>=0.2.0
+
+# Vector Store and Search dependencies
+chromadb>=0.4.0
+qdrant-client>=1.7.0
+rank-bm25>=0.2.2
+sentence-transformers>=2.2.0
+
+# LLM and Model dependencies
+llama-cpp-python>=0.2.0
+gguf>=0.1.0
+peft>=0.7.0
+
+# Web Framework and API dependencies
+fastapi>=0.95.0
+starlette>=0.26.1
+uvicorn>=0.22.0
+
+# Document Processing dependencies
+pypdf>=3.0.0
+python-docx>=0.8.11
+unstructured>=0.10.0
+
+# NLP and Text Processing
+nltk>=3.8.1
+spacy>=3.7.0
+tiktoken>=0.5.0
+
+# Monitoring and Experiment Tracking
+comet-ml>=3.0.0
+dagshub>=0.3.0
+langfuse>=2.0.0
+wandb>=0.16.0
+tensorboard
+
+# CrewAI dependencies
+crewai>=0.11.0
+crewai-tools>=0.0.1
+
+# MCP dependencies
+mcp[cli]>=1.3.0
+
+# Utility dependencies
+click>=8.0.0
+huggingface_hub>=0.16.0
+pydantic>=1.10.2
+python-dateutil>=2.8.2
+python-dotenv>=0.21.0
+pyyaml>=6.0
+requests>=2.32.3
+typing-extensions>=4.0.1
+urllib3>=1.26.5
+
+# Evaluation and Metrics
+ragas>=0.1.0
+lm_eval>=0.4.0

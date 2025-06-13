@@ -297,11 +297,11 @@ install_packages() {
     # Force auto-gptq to build CPU-only (skip CUDA extensions)
     export FORCE_CUDA=0
 
-    # Install from requirements.txt
+    # Install from requirements.txt using --no-build-isolation
     local requirements_file="$script_dir/requirements.txt"
     if [[ -f "$requirements_file" ]]; then
-        log_info "Installing from requirements.txt"
-        pip install -r "$requirements_file" || error_exit "Failed to install from requirements.txt"
+        log_info "Installing from requirements.txt with --no-build-isolation"
+        pip install --no-build-isolation -r "$requirements_file" || error_exit "Failed to install from requirements.txt"
     else
         error_exit "requirements.txt not found at: $requirements_file"
     fi

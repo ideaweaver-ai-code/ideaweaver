@@ -2,6 +2,10 @@
 
 A comprehensive CLI tool for AI model training, evaluation, and deployment with advanced RAG capabilities and MCP (Model Context Protocol) integration. Train, fine-tune, and deploy language models with enterprise-grade features.
 
+## IdeaWeaver Architecture
+
+![IdeaWeaver Architecture](images/ideaweaver-main.gif)
+
 ## Key Features
 
 - **One-Click Setup** - Automated Python 3.12 environment with all dependencies

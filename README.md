@@ -1,6 +1,6 @@
 # IdeaWeaver
 
-[![Basic Tests](https://github.com/ideaweaver-ai-code/ideaweaver/actions/workflows/basic-test.yml/badge.svg)](https://github.com/ideaweaver-ai-code/ideaweaver/actions/workflows/basic-test.yml)
+[![IdeaWeaver Tests](https://github.com/ideaweaver-ai-code/ideaweaver/actions/workflows/basic-test.yml/badge.svg)](https://github.com/ideaweaver-ai-code/ideaweaver/actions/workflows/basic-test.yml)
 
 A comprehensive CLI tool for AI model training, evaluation, and deployment with advanced RAG capabilities and MCP (Model Context Protocol) integration. Train, fine-tune, and deploy language models with enterprise-grade features.
 

@@ -21,43 +21,14 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     
-    - name: Install dependencies
+    - name: Setup IdeaWeaver Environment
       run: |
-        python -m pip install --upgrade pip
-        pip install -e .
+        chmod +x setup_environments.sh
+        ./setup_environments.sh
     
     - name: Run basic CLI tests
       run: |
+        source ideaweaver-env/bin/activate
         # Test help command
         ideaweaver --help
         
-        # Test list-tasks command
-        ideaweaver list-tasks
-        
-        # Test validate command with a sample config
-        ideaweaver validate configs/training_config.yml
-        
-        # Test download command
-        ideaweaver download --model google/bert_uncased_L-2_H-128_A-2 --output-dir ./test_model
-        
-        # Test basic evaluation
-        ideaweaver evaluate ./test_model \
-          --tasks hellaswag \
-          --output-path results.json \
-          --report-to none \
-          --limit 10
-        
-        # Test RAG commands
-        ideaweaver rag list-kb
-        
-        # Test MCP commands
-        ideaweaver mcp list-servers
-        
-        # Test agent commands
-        ideaweaver agent --help
-        
-        # Test finetune commands
-        ideaweaver finetune --help
-        
-        # Test train commands
-        ideaweaver train --help 

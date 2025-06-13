@@ -258,6 +258,26 @@ create_venv() {
     fi
 }
 
+# Install torch before requirements.txt if not already installed
+install_torch() {
+    if python -c "import torch" &>/dev/null; then
+        log_info "PyTorch already installed, skipping."
+        return
+    fi
+
+    if [[ -n "${CI:-}" ]]; then
+        log_info "CI environment detected, installing CPU-only torch."
+        pip install torch --index-url https://download.pytorch.org/whl/cpu
+    elif command -v nvidia-smi &>/dev/null; then
+        log_info "NVIDIA GPU detected. Please install the correct torch version for your CUDA version."
+        log_info "See: https://pytorch.org/get-started/locally/"
+        pip install torch  # This will install the default version, but user may want to override
+    else
+        log_info "No GPU detected, installing CPU-only torch."
+        pip install torch --index-url https://download.pytorch.org/whl/cpu
+    fi
+}
+
 # Install packages in virtual environment
 install_packages() {
     local env_name="$1"
@@ -271,6 +291,9 @@ install_packages() {
     # Upgrade pip first
     pip install --upgrade pip || error_exit "Failed to upgrade pip in $env_name"
     
+    # Install torch first
+    install_torch
+
     # Install from requirements.txt
     local requirements_file="$script_dir/requirements.txt"
     if [[ -f "$requirements_file" ]]; then

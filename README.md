@@ -204,6 +204,8 @@ For detailed documentation, tutorials, and API references, please visit our [doc
 
 - Some features may require additional setup
 
+⚠️ Note: IdeaWeaver is currently in alpha. Expect a few bugs, and please report any issues you find. If you like the project, drop a ⭐ on GitHub!
+
 ## 🔗 Links
 
 - [GitHub Repository](https://github.com/ideaweaver-ai-code/ideaweaver)

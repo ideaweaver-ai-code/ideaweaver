@@ -13,8 +13,8 @@ scipy
 trl>=0.7.0
 
 # Quantization dependencies (CPU only for Mac)
-auto-gptq>=0.4.0; platform_system != "Darwin"
-autoawq>=0.1.0; platform_system != "Darwin"
+# auto-gptq>=0.4.0; platform_system != "Darwin"
+# autoawq>=0.1.0; platform_system != "Darwin"
 
 # AWS dependencies
 boto3>=1.37.9

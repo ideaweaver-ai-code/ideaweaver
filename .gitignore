@@ -2,3 +2,16 @@ downloaded_model/
 documents/
 tensorboard_logs/
 wandb/
+backend/
+datasets/
+docs/
+evaluation_report_._downloaded_model.md
+ideaweaver-env/
+ideaweaver/__pycache__/
+mkdocs.yml
+nohup.out
+rag_data/
+results.json/
+test_full_basic/
+trash/
+wandb_results/

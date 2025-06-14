@@ -161,7 +161,7 @@ class LLMEvaluator:
                 click.echo(result.stdout)
             
             # Load and parse results
-            results = self._parse_results(output_path)
+            results = self._parse_results(output_path, expected_tasks=tasks)
             
             # Log additional metrics to wandb
             if self.wandb_run:
@@ -175,55 +175,69 @@ class LLMEvaluator:
                 click.echo(f"❌ {error_msg}")
             raise RuntimeError(error_msg)
     
-    def _parse_results(self, output_path: str) -> Dict:
-        """Parse evaluation results from output directory"""
-        import glob
+    def _find_all_results_files(self, output_path):
+        import fnmatch
+        matches = []
+        for root, dirs, files in os.walk(output_path):
+            for filename in files:
+                if fnmatch.fnmatch(filename, "results*.json"):
+                    matches.append(os.path.join(root, filename))
+        return matches
+
+    def _parse_results(self, output_path: str, expected_tasks: Optional[List[str]] = None) -> Dict:
+        """Parse evaluation results from output directory, matching expected tasks if provided."""
         import os
         import json
-        
-        # Recursively search for results*.json in all subdirectories
-        pattern = os.path.join(output_path, '**', 'results*.json')
-        matches = glob.glob(pattern, recursive=True)
+
+        # Use os.walk to find all results*.json files, even in hidden directories
+        matches = self._find_all_results_files(output_path)
         results_file = None
-        if matches:
-            # Use the most recent file if multiple matches
+        selected_results = None
+        normalized_expected = [t.strip().lower() for t in expected_tasks] if expected_tasks else []
+        found_debug = []
+
+        # Try to find a results file that contains all expected tasks (case/whitespace-insensitive)
+        if matches and expected_tasks:
+            for file in sorted(matches, key=os.path.getmtime, reverse=True):
+                try:
+                    with open(file, 'r') as f:
+                        data = json.load(f)
+                    if "results" in data:
+                        result_keys = [k.strip().lower() for k in data["results"].keys()]
+                        found_debug.append((file, result_keys))
+                        if all(t in result_keys for t in normalized_expected):
+                            results_file = file
+                            selected_results = data
+                            break
+                except Exception:
+                    continue
+
+        # If not found, fall back to the most recent results file, but print debug info
+        if not selected_results and matches:
             results_file = max(matches, key=os.path.getmtime)
-        
-        if results_file and os.path.exists(results_file):
             try:
-                if self.verbose:
-                    click.echo(f"✅ Found and parsed results from: {results_file}")
                 with open(results_file, 'r') as f:
-                    results = json.load(f)
+                    selected_results = json.load(f)
                 if self.verbose:
-                    click.echo(f"DEBUG: Parsed results: {json.dumps(results, indent=2)}")
-                # If no metrics, add dummy metric for TensorBoard debugging
-                if not results.get("results") or not any(isinstance(v, dict) and v for v in results["results"].values()):
-                    results["results"] = {
-                        "dummy_task": {
-                            "dummy_metric": 1.0
-                        }
-                    }
-                return results
-            except (json.JSONDecodeError, Exception) as e:
-                if self.verbose:
-                    click.echo(f"⚠️  Failed to parse results file {results_file}: {e}")
-        
-        # If no results.json found, create a basic results structure with dummy metric
-        if self.verbose:
-            click.echo("⚠️  No results.json found, creating basic results structure")
-        return {
-            "results": {
-                "dummy_task": {
-                    "dummy_metric": 1.0
-                }
-            },
-            "config": {
-                "model": self.model_path,
-                "output_path": output_path
-            },
-            "versions": {}
-        }
+                    click.echo(f"⚠️  No exact match for expected tasks. Falling back to most recent results file: {results_file}")
+                    click.echo(f"Expected tasks: {normalized_expected}")
+                    click.echo(f"Found in files:")
+                    for fname, keys in found_debug:
+                        click.echo(f"  {fname}: {keys}")
+            except Exception:
+                selected_results = None
+
+        if selected_results:
+            if self.verbose:
+                click.echo(f"✅ Found and parsed results from: {results_file}")
+                click.echo(f"DEBUG: Parsed results: {json.dumps(selected_results, indent=2)}")
+            # If no metrics, raise error
+            if not selected_results.get("results") or not any(isinstance(v, dict) and v for v in selected_results["results"].values()):
+                raise RuntimeError("No valid metrics found in the results file. Please check your evaluation output.")
+            return selected_results
+
+        # If no results file found, raise error
+        raise RuntimeError(f"No results*.json file found in {output_path} for the requested tasks. Please check that evaluation completed successfully and results were written.")
     
     def _log_to_wandb(self, results: Dict, tasks: List[str], duration: float):
         """Log evaluation results to Weights & Biases"""

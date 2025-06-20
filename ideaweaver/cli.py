@@ -2607,28 +2607,26 @@ def generate_storybook(theme, target_age, num_pages, style, openai_api_key, forc
     import sys
     from pathlib import Path
     
-    # Set up the API key
-    api_key = openai_api_key or "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"
-    
     click.echo(f"🚀 Generating storybook: '{theme}' for ages {target_age}")
     click.echo("📋 LLM Priority: Ollama (local) → OpenAI (cloud)")
     
     # Prepare the command to run in the current environment
-    force_flag = "--force-openai" if force_openai else ""
     cmd = [
         'python', '-c',
         f"from ideaweaver.crew_ai import StorybookGenerator; "
-        f"generator = StorybookGenerator({'None' if force_openai else 'None'}); "
+        f"generator = StorybookGenerator(openai_api_key={repr(openai_api_key)}); "
         f"result = generator.create_storybook("
         f"theme='{theme}', target_age='{target_age}', "
         f"num_pages={num_pages}, style='{style}'); "
-        f"print(result)"
+        f"print(result.get('formatted_content', result.get('content', 'No content generated')))"
     ]
     
     try:
         import os
         env = os.environ.copy()
         env["PYTHONPATH"] = str(Path.cwd())
+        if openai_api_key:
+            env["OPENAI_API_KEY"] = openai_api_key
         result = subprocess.run(cmd, capture_output=True, text=True, check=True, env=env)
         click.echo(result.stdout)
         if result.stderr:
@@ -2670,18 +2668,15 @@ def research_write(topic, content_type, audience, openai_api_key):
     import sys
     from pathlib import Path
     
-    # Set up the API key
-    api_key = openai_api_key or "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"
-    
     click.echo(f"🔍 Researching and writing about: '{topic}'")
     click.echo(f"📝 Content Type: {content_type} | 👥 Audience: {audience}")
-    click.echo(f"🧠 Using OpenAI GPT-4 with web search capabilities")
+    click.echo("📋 LLM Priority: Ollama (local) → OpenAI (cloud)")
     
     # Prepare the command to run in the current environment
     cmd = [
         'python', '-c',
         f"from ideaweaver.crew_ai import ResearchWriterGenerator; "
-        f"generator = ResearchWriterGenerator(); "
+        f"generator = ResearchWriterGenerator(openai_api_key={repr(openai_api_key)}); "
         f"result = generator.create_research_content("
         f"topic='{topic}', content_type='{content_type}', "
         f"target_audience='{audience}'); "
@@ -2692,6 +2687,8 @@ def research_write(topic, content_type, audience, openai_api_key):
         import os
         env = os.environ.copy()
         env["PYTHONPATH"] = str(Path.cwd())
+        if openai_api_key:
+            env["OPENAI_API_KEY"] = openai_api_key
         result = subprocess.run(cmd, capture_output=True, text=True, check=True, env=env)
         click.echo("\n" + "="*80)
         click.echo(f"📄 RESEARCH & WRITING: {topic}")
@@ -2729,18 +2726,15 @@ def linkedin_post(topic, post_type, tone, openai_api_key):
     import sys
     from pathlib import Path
     
-    # Set up the API key
-    api_key = openai_api_key or "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"
-    
     click.echo(f"📱 Creating LinkedIn post about: '{topic}'")
     click.echo(f"📝 Type: {post_type} | 🎯 Tone: {tone}")
-    click.echo(f"🧠 Using OpenAI GPT-4 for viral content creation")
+    click.echo("📋 LLM Priority: Ollama (local) → OpenAI (cloud)")
     
     # Prepare the command to run in the current environment
     cmd = [
         'python', '-c',
         f"from ideaweaver.crew_ai import LinkedInPostGenerator; "
-        f"generator = LinkedInPostGenerator(); "
+        f"generator = LinkedInPostGenerator(openai_api_key={repr(openai_api_key)}); "
         f"result = generator.create_linkedin_post("
         f"topic='{topic}', post_type='{post_type}', "
         f"tone='{tone}'); "
@@ -2751,6 +2745,8 @@ def linkedin_post(topic, post_type, tone, openai_api_key):
         import os
         env = os.environ.copy()
         env["PYTHONPATH"] = str(Path.cwd())
+        if openai_api_key:
+            env["OPENAI_API_KEY"] = openai_api_key
         result = subprocess.run(cmd, capture_output=True, text=True, check=True, env=env)
         click.echo("\n" + "="*80)
         click.echo(f"📱 LINKEDIN POST: {topic}")
@@ -2769,7 +2765,38 @@ def linkedin_post(topic, post_type, tone, openai_api_key):
 @click.option('--openai-api-key', envvar='OPENAI_API_KEY', help='OpenAI API key')
 def stock_analysis(symbol, openai_api_key):
     """Analyze stock performance, trends, and provide investment insights."""
-    pass
+    import subprocess
+    import sys
+    from pathlib import Path
+    
+    click.echo(f"📈 Analyzing stock: {symbol}")
+    click.echo("📋 LLM Priority: Ollama (local) → OpenAI (cloud)")
+    
+    # Prepare the command to run in the current environment
+    cmd = [
+        'python', '-c',
+        f"from ideaweaver.crew_ai import StockAnalysisGenerator; "
+        f"generator = StockAnalysisGenerator(openai_api_key={repr(openai_api_key)}); "
+        f"result = generator.analyze_stock('{symbol}'); "
+        f"print(result)"
+    ]
+    
+    try:
+        import os
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(Path.cwd())
+        if openai_api_key:
+            env["OPENAI_API_KEY"] = openai_api_key
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, env=env)
+        click.echo("\n📊 Stock Analysis Results:")
+        click.echo("=" * 80)
+        click.echo(result.stdout)
+        click.echo("=" * 80)
+        if result.stderr:
+            click.echo(f"Warnings: {result.stderr}", err=True)
+    except subprocess.CalledProcessError as e:
+        click.echo(f"❌ Error analyzing stock: {e.stderr}", err=True)
+        sys.exit(1)
 
 @agent.command('travel_plan')
 @click.option('--destination', required=True, help='Travel destination')
@@ -2779,7 +2806,42 @@ def stock_analysis(symbol, openai_api_key):
 @click.option('--openai-api-key', envvar='OPENAI_API_KEY', help='OpenAI API key')
 def travel_plan(destination, duration, budget, preferences, openai_api_key):
     """Create personalized travel itineraries with recommendations for activities, accommodations, and local experiences."""
-    pass
+    import subprocess
+    import sys
+    from pathlib import Path
+    
+    click.echo(f"✈️ Creating travel plan for: {destination}")
+    click.echo(f"⏱️ Duration: {duration} | 💰 Budget: {budget} | 🎯 Style: {preferences}")
+    click.echo("📋 LLM Priority: Ollama (local) → OpenAI (cloud)")
+    
+    # Prepare the command to run in the current environment
+    api_key_arg = f", openai_api_key='{openai_api_key}'" if openai_api_key else ""
+    cmd = [
+        'python', '-c',
+        f"from ideaweaver.crew_ai import TravelPlannerGenerator; "
+        f"generator = TravelPlannerGenerator(openai_api_key={repr(openai_api_key)}); "
+        f"result = generator.create_travel_plan("
+        f"destination='{destination}', duration='{duration}', "
+        f"budget='{budget}', preferences='{preferences}'); "
+        f"print(result)"
+    ]
+    
+    try:
+        import os
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(Path.cwd())
+        if openai_api_key:
+            env["OPENAI_API_KEY"] = openai_api_key
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, env=env)
+        click.echo("\n📋 Your Travel Plan:")
+        click.echo("=" * 80)
+        click.echo(result.stdout)
+        click.echo("=" * 80)
+        if result.stderr:
+            click.echo(f"Warnings: {result.stderr}", err=True)
+    except subprocess.CalledProcessError as e:
+        click.echo(f"❌ Error creating travel plan: {e.stderr}", err=True)
+        sys.exit(1)
 
 @agent.command('check-llm')
 def check_llm_status():

@@ -31,13 +31,13 @@ def generate_storybook(theme, target_age, num_pages, style, openai_api_key):
     """
     
     click.echo(f"🚀 Generating storybook: '{theme}' for ages {target_age}")
-    click.echo(f"🧠 Using OpenAI GPT-4 (Ollama has compatibility issues with CrewAI)")
+    click.echo(f"📋 LLM Priority: Ollama (local) → OpenAI (cloud)")
     
     try:
         # Import only when needed
         from .crew_ai import StorybookGenerator
         
-        generator = StorybookGenerator()
+        generator = StorybookGenerator(openai_api_key=openai_api_key)
         result = generator.create_storybook(
             theme=theme,
             target_age=target_age,
@@ -73,7 +73,7 @@ def generate_storybook(theme, target_age, num_pages, style, openai_api_key):
             click.echo("❌ Error generating storybook")
         
     except Exception as e:
-        click.echo(f"❌ Error: {e}", err=True)
+        click.echo(f"❌ Error running storybook generation: {e}", err=True)
         sys.exit(1)
 
 @crew.command('research_write')
@@ -93,13 +93,13 @@ def research_write(topic, content_type, audience, openai_api_key):
     
     click.echo(f"🔍 Researching and writing about: '{topic}'")
     click.echo(f"📝 Content Type: {content_type} | 👥 Audience: {audience}")
-    click.echo(f"🧠 Using OpenAI GPT-4 with web search capabilities")
+    click.echo(f"📋 LLM Priority: Ollama (local) → OpenAI (cloud)")
     
     try:
         # Import only when needed
         from .crew_ai import ResearchWriterGenerator
         
-        generator = ResearchWriterGenerator()
+        generator = ResearchWriterGenerator(openai_api_key=openai_api_key)
         result = generator.create_research_content(
             topic=topic,
             content_type=content_type,

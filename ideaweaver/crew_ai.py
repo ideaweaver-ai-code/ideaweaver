@@ -85,9 +85,8 @@ def setup_intelligent_llm(openai_api_key: Optional[str] = None, preferred_model:
     if openai_api_key:
         os.environ["OPENAI_API_KEY"] = openai_api_key
     elif not os.environ.get("OPENAI_API_KEY"):
-        default_key = "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"
-        os.environ["OPENAI_API_KEY"] = default_key
-        print("🔑 Using default OpenAI API key")
+        # No hardcoded key - require user to provide one
+        raise RuntimeError("OpenAI API key required. Please set OPENAI_API_KEY environment variable or pass --openai-api-key parameter.")
     
     try:
         llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0.7)
@@ -269,9 +268,9 @@ class CrewAIManager:
 
 class StorybookGenerator:
     def __init__(self, openai_api_key: Optional[str] = None):
-        """Initialize the StorybookGenerator with OpenAI (Ollama has compatibility issues with CrewAI)."""
-        self.llm = self._setup_openai_llm(openai_api_key)
-        self.llm_type = 'openai'
+        """Initialize the StorybookGenerator with intelligent LLM selection."""
+        self.llm, self.llm_type, self.model_used = setup_intelligent_llm(openai_api_key)
+        print(f"🧠 Using {self.llm_type.upper()} with model: {self.model_used}")
 
     def _setup_openai_llm(self, openai_api_key: Optional[str] = None):
         """Set up OpenAI LLM (removing broken Ollama integration)."""
@@ -282,10 +281,8 @@ class StorybookGenerator:
         if openai_api_key:
             os.environ["OPENAI_API_KEY"] = openai_api_key
         elif not os.environ.get("OPENAI_API_KEY"):
-            # Use the default key if no key provided
-            default_key = "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"
-            os.environ["OPENAI_API_KEY"] = default_key
-            print("🔑 Using default OpenAI API key")
+            # No hardcoded key - require user to provide one
+            raise Exception("OpenAI API key required. Please set OPENAI_API_KEY environment variable or pass --openai-api-key parameter.")
         
         try:
             from langchain_openai import ChatOpenAI
@@ -542,9 +539,9 @@ Pages: {num_pages}
 
 class ResearchWriterGenerator:
     def __init__(self, openai_api_key: Optional[str] = None):
-        """Initialize the ResearchWriterGenerator with OpenAI for research and writing tasks."""
-        self.llm = self._setup_openai_llm(openai_api_key)
-        self.llm_type = 'openai'
+        """Initialize the ResearchWriterGenerator with intelligent LLM selection."""
+        self.llm, self.llm_type, self.model_used = setup_intelligent_llm(openai_api_key)
+        print(f"🧠 Using {self.llm_type.upper()} with model: {self.model_used}")
 
     def _setup_openai_llm(self, openai_api_key: Optional[str] = None):
         """Set up OpenAI LLM for research and writing tasks."""
@@ -555,10 +552,8 @@ class ResearchWriterGenerator:
         if openai_api_key:
             os.environ["OPENAI_API_KEY"] = openai_api_key
         elif not os.environ.get("OPENAI_API_KEY"):
-            # Use the default key if no key provided
-            default_key = "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"
-            os.environ["OPENAI_API_KEY"] = default_key
-            print("🔑 Using default OpenAI API key")
+            # No hardcoded key - require user to provide one
+            raise Exception("OpenAI API key required. Please set OPENAI_API_KEY environment variable or pass --openai-api-key parameter.")
         
         try:
             from langchain_openai import ChatOpenAI
@@ -814,9 +809,9 @@ Generated: {os.popen('date').read().strip()}
 
 class LinkedInPostGenerator:
     def __init__(self, openai_api_key: Optional[str] = None):
-        """Initialize the LinkedInPostGenerator with OpenAI for creating viral LinkedIn content."""
-        self.llm = self._setup_openai_llm(openai_api_key)
-        self.llm_type = 'openai'
+        """Initialize the LinkedInPostGenerator with intelligent LLM selection."""
+        self.llm, self.llm_type, self.model_used = setup_intelligent_llm(openai_api_key)
+        print(f"🧠 Using {self.llm_type.upper()} with model: {self.model_used}")
 
     def _setup_openai_llm(self, openai_api_key: Optional[str] = None):
         """Set up OpenAI LLM for LinkedIn post creation."""
@@ -827,10 +822,8 @@ class LinkedInPostGenerator:
         if openai_api_key:
             os.environ["OPENAI_API_KEY"] = openai_api_key
         elif not os.environ.get("OPENAI_API_KEY"):
-            # Use the default key if no key provided
-            default_key = "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"
-            os.environ["OPENAI_API_KEY"] = default_key
-            print("🔑 Using default OpenAI API key")
+            # No hardcoded key - require user to provide one
+            raise Exception("OpenAI API key required. Please set OPENAI_API_KEY environment variable or pass --openai-api-key parameter.")
         
         try:
             from langchain_openai import ChatOpenAI

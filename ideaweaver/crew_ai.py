@@ -1245,6 +1245,274 @@ Happy travels! 🚀
         
         return header + content + footer 
 
+
+class InstagramPostGenerator:
+    """Instagram Post Generator using CrewAI"""
+    
+    def __init__(self, openai_api_key: Optional[str] = None):
+        self.llm, self.llm_type, self.model_used = setup_intelligent_llm(openai_api_key)
+    
+    def create_instagram_post(self, 
+                            topic: str,
+                            target_audience: str = "general audience",
+                            post_type: str = "engaging",
+                            include_hashtags: bool = True) -> Dict:
+        """
+        Create Instagram post content with strategy, copy, and hashtag recommendations
+        
+        Args:
+            topic: Main topic for the Instagram post
+            target_audience: Target audience for the post
+            post_type: Type of post (engaging, educational, promotional, inspirational)
+            include_hashtags: Whether to include hashtag recommendations
+            
+        Returns:
+            Dict containing the generated content and metadata
+        """
+        try:
+            print(f"🎯 Creating Instagram post about: {topic}")
+            print(f"👥 Target audience: {target_audience}")
+            print(f"📱 Post type: {post_type}")
+            print(f"🔧 Using {self.llm_type} with model: {self.model_used}")
+            
+            # Market Research Agent
+            market_researcher = Agent(
+                role="Instagram Market Researcher",
+                goal=f"Research trending topics, hashtags, and engagement strategies related to {topic} for Instagram",
+                backstory="""You are an expert Instagram market researcher with deep knowledge of social media trends, 
+                hashtag performance, and audience engagement patterns. You excel at identifying viral content opportunities 
+                and understanding what makes posts successful on Instagram. You stay up-to-date with the latest Instagram 
+                algorithm changes and best practices for maximum reach and engagement.""",
+                verbose=True,
+                llm=self.llm,
+                allow_delegation=False
+            )
+            
+            # Content Strategist Agent
+            content_strategist = Agent(
+                role="Instagram Content Strategist",
+                goal=f"Develop a comprehensive content strategy for an Instagram post about {topic} targeting {target_audience}",
+                backstory="""You are a seasoned Instagram content strategist who understands the platform's unique 
+                characteristics and audience behaviors. You excel at creating content strategies that balance 
+                entertainment, education, and engagement. You know how to craft posts that not only look good 
+                but also drive meaningful interactions and build community.""",
+                verbose=True,
+                llm=self.llm,
+                allow_delegation=False
+            )
+            
+            # Copywriter Agent
+            copywriter = Agent(
+                role="Instagram Copywriter",
+                goal=f"Write compelling, engaging Instagram post copy about {topic} that resonates with {target_audience}",
+                backstory="""You are a creative Instagram copywriter who knows how to craft posts that stop the scroll. 
+                You understand the art of writing for social media - keeping it concise yet impactful, using the right 
+                tone for the audience, and including clear calls-to-action. You know how to use emojis effectively 
+                and create copy that encourages engagement through comments, likes, and shares.""",
+                verbose=True,
+                llm=self.llm,
+                allow_delegation=False
+            )
+            
+            # Hashtag Specialist Agent
+            hashtag_specialist = Agent(
+                role="Instagram Hashtag Specialist",
+                goal=f"Research and recommend the most effective hashtags for a post about {topic}",
+                backstory="""You are an Instagram hashtag expert who understands the science behind hashtag strategy. 
+                You know how to mix popular, niche, and branded hashtags to maximize reach while targeting the right 
+                audience. You stay updated on trending hashtags and understand which ones are overused or banned. 
+                You create hashtag sets that help posts get discovered by the ideal audience.""",
+                verbose=True,
+                llm=self.llm,
+                allow_delegation=False
+            )
+            
+            # Define tasks
+            market_research_task = Task(
+                description=f"""Conduct comprehensive market research for an Instagram post about {topic}. 
+                Research current trends, popular content formats, optimal posting times, and audience preferences. 
+                Analyze what type of content performs well in this niche and identify opportunities for engagement.
+                
+                Focus on:
+                - Current trending topics related to {topic}
+                - Popular content formats (carousel, video, single image, etc.)
+                - Audience engagement patterns
+                - Competitor analysis in this space
+                - Best posting times for {target_audience}
+                
+                Provide actionable insights that will inform the content strategy.""",
+                agent=market_researcher,
+                expected_output="A detailed market research report with trending topics, audience insights, and content format recommendations"
+            )
+            
+            content_strategy_task = Task(
+                description=f"""Based on the market research, develop a comprehensive content strategy for an Instagram post about {topic}.
+                The strategy should be tailored for {target_audience} and focus on creating {post_type} content.
+                
+                Include:
+                - Content angle and key messaging
+                - Visual content recommendations
+                - Engagement strategy (how to encourage comments, shares, saves)
+                - Call-to-action suggestions
+                - Post format recommendation (single image, carousel, reel, etc.)
+                - Optimal posting time
+                
+                Make sure the strategy aligns with current Instagram best practices and trends.""",
+                agent=content_strategist,
+                expected_output="A comprehensive content strategy document with specific recommendations for the Instagram post",
+                context=[market_research_task]
+            )
+            
+            copywriting_task = Task(
+                description=f"""You are an expert Instagram copywriter. Write compelling Instagram post copy about {topic} for {target_audience}.
+                
+                Create {post_type} content that includes:
+                
+                1. A HOOK (first line that grabs attention)
+                2. MAIN CONTENT (2-3 sentences about {topic})
+                3. CALL TO ACTION (asking for engagement)
+                4. EMOJIS (naturally integrated)
+                
+                Example format:
+                "🚀 Hook about {topic}...
+                
+                Main content explaining the value...
+                
+                What's your experience with {topic}? Share below! 👇
+                
+                #hashtag #hashtag"
+                
+                Make it authentic, engaging, and optimized for {target_audience}. 
+                Keep it under 2200 characters. Focus ONLY on writing the actual post copy.""",
+                agent=copywriter,
+                expected_output="Ready-to-post Instagram copy with hook, content, call-to-action, and emojis",
+                context=[market_research_task, content_strategy_task]
+            )
+            
+            # Conditionally add hashtag task
+            tasks = [market_research_task, content_strategy_task, copywriting_task]
+            
+            if include_hashtags:
+                hashtag_task = Task(
+                    description=f"""You are an Instagram hashtag expert. Research and provide EXACTLY 25 hashtags for a post about {topic} targeting {target_audience}.
+                    
+                    Provide hashtags in this format:
+                    
+                    HIGH REACH (5 hashtags - 100K+ posts):
+                    #hashtag1 #hashtag2 #hashtag3 #hashtag4 #hashtag5
+                    
+                    MEDIUM REACH (10 hashtags - 10K-100K posts):
+                    #hashtag6 #hashtag7 #hashtag8 #hashtag9 #hashtag10 #hashtag11 #hashtag12 #hashtag13 #hashtag14 #hashtag15
+                    
+                    LOW REACH (10 hashtags - Under 10K posts):
+                    #hashtag16 #hashtag17 #hashtag18 #hashtag19 #hashtag20 #hashtag21 #hashtag22 #hashtag23 #hashtag24 #hashtag25
+                    
+                    Focus ONLY on providing the hashtags in the exact format above. Make them relevant to {topic} and {target_audience}.""",
+                    agent=hashtag_specialist,
+                    expected_output="25 Instagram hashtags categorized by reach potential in the specified format",
+                    context=[market_research_task, content_strategy_task]
+                )
+                tasks.append(hashtag_task)
+            
+            # Create and run crew
+            agents = [market_researcher, content_strategist, copywriter]
+            if include_hashtags:
+                agents.append(hashtag_specialist)
+            
+            crew = Crew(
+                agents=agents,
+                tasks=tasks,
+                verbose=True,
+                process=Process.sequential
+            )
+            
+            print("🚀 Starting Instagram post creation process...")
+            result = crew.kickoff()
+            
+            # Format the output
+            formatted_result = self._format_instagram_output(
+                result, topic, target_audience, post_type, include_hashtags
+            )
+            
+            return {
+                'content': str(result),
+                'formatted_content': formatted_result,
+                'topic': topic,
+                'target_audience': target_audience,
+                'post_type': post_type,
+                'llm_used': f"{self.llm_type}:{self.model_used}",
+                'include_hashtags': include_hashtags
+            }
+            
+        except Exception as e:
+            error_msg = f"Error creating Instagram post: {str(e)}"
+            print(f"❌ {error_msg}")
+            return {
+                'content': error_msg,
+                'formatted_content': error_msg,
+                'topic': topic,
+                'target_audience': target_audience,
+                'post_type': post_type,
+                'error': str(e)
+            }
+    
+    def _format_instagram_output(self, content: str, topic: str, target_audience: str, post_type: str, include_hashtags: bool) -> str:
+        """Format the Instagram post output for better readability"""
+        
+        # Clean the content
+        cleaned_content = self._clean_content(str(content))
+        
+        # Create formatted output
+        formatted_output = f"""
+# 📱 INSTAGRAM POST STRATEGY
+
+## 🎯 Post Details
+- **Topic**: {topic}
+- **Target Audience**: {target_audience}
+- **Post Type**: {post_type}
+- **Hashtags Included**: {'Yes' if include_hashtags else 'No'}
+
+## 📋 Generated Content
+
+{cleaned_content}
+
+## 💡 Next Steps
+1. Review and customize the copy to match your brand voice
+2. Create or source visual content based on the recommendations
+3. Schedule the post for optimal engagement times
+4. Monitor performance and engage with comments
+5. Consider creating variations for Stories or Reels
+
+---
+*Generated by IdeaWeaver Instagram Post Agent*
+"""
+        
+        return formatted_output.strip()
+    
+    def _clean_content(self, content: str) -> str:
+        """Clean and format the content"""
+        # Remove <think> tags and their content (from reasoning models)
+        content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
+        
+        # Remove any markdown code blocks
+        content = re.sub(r'```.*?```', '', content, flags=re.DOTALL)
+        
+        # Remove any remaining backticks
+        content = content.replace('`', '')
+        
+        # Remove "Begin! This is VERY important..." prompts
+        content = re.sub(r'Begin! This is VERY important.*?depends on it!', '', content, flags=re.DOTALL)
+        
+        # Remove "Thought:" lines
+        content = re.sub(r'Thought:.*?\n', '', content)
+        
+        # Clean up extra whitespace
+        content = re.sub(r'\n\s*\n', '\n\n', content)
+        content = content.strip()
+        
+        return content
+
+
 class StockAnalysisGenerator:
     def __init__(self, openai_api_key: Optional[str] = None):
         """Initialize the StockAnalysisGenerator with intelligent LLM selection."""

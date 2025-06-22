@@ -2762,6 +2762,67 @@ def linkedin_post(topic, post_type, tone, openai_api_key):
         click.echo(f"❌ Error running LinkedIn post generation: {e.stderr}", err=True)
         sys.exit(1)
 
+@agent.command('instagram_post')
+@click.option('--topic', required=True, help='Topic for the Instagram post')
+@click.option('--target-audience', default='general audience', help='Target audience for the post (e.g., "millennials", "fitness enthusiasts", "entrepreneurs")')
+@click.option('--post-type', default='engaging', help='Type of post (engaging, educational, promotional, inspirational)')
+@click.option('--include-hashtags/--no-hashtags', default=True, help='Include hashtag recommendations')
+@click.option('--openai-api-key', envvar='OPENAI_API_KEY', help='OpenAI API key')
+def instagram_post(topic, target_audience, post_type, include_hashtags, openai_api_key):
+    """Create engaging Instagram content with strategy, copy, and hashtag recommendations.
+    
+    This agent creates comprehensive Instagram posts that:
+    - Research current trends and audience preferences
+    - Develop content strategy optimized for engagement
+    - Write compelling copy with proper formatting
+    - Recommend strategic hashtags for maximum reach
+    - Provide visual content suggestions
+    
+    The agent optimizes content for:
+    - Instagram algorithm preferences
+    - Target audience engagement
+    - Brand voice consistency
+    - Platform best practices
+    """
+    import subprocess
+    import sys
+    from pathlib import Path
+    
+    click.echo(f"📱 Creating Instagram post about: '{topic}'")
+    click.echo(f"👥 Target audience: {target_audience} | 📝 Type: {post_type}")
+    click.echo(f"🏷️ Include hashtags: {'Yes' if include_hashtags else 'No'}")
+    click.echo("📋 LLM Priority: Ollama (local) → OpenAI (cloud)")
+    
+    # Prepare the command to run in the current environment
+    cmd = [
+        'python', '-c',
+        f"from ideaweaver.crew_ai import InstagramPostGenerator; "
+        f"generator = InstagramPostGenerator(openai_api_key={repr(openai_api_key)}); "
+        f"result = generator.create_instagram_post("
+        f"topic='{topic}', target_audience='{target_audience}', "
+        f"post_type='{post_type}', include_hashtags={include_hashtags}); "
+        f"print(result.get('formatted_content', result.get('content', 'No content generated')))"
+    ]
+    
+    try:
+        import os
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(Path.cwd())
+        if openai_api_key:
+            env["OPENAI_API_KEY"] = openai_api_key
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, env=env)
+        click.echo("\n" + "="*80)
+        click.echo(f"📱 INSTAGRAM POST: {topic}")
+        click.echo(f"👥 Audience: {target_audience} | 📝 Type: {post_type}")
+        click.echo("="*80)
+        click.echo(result.stdout)
+        click.echo("="*80)
+        if result.stderr:
+            click.echo(f"Warnings: {result.stderr}", err=True)
+    except subprocess.CalledProcessError as e:
+        click.echo(f"❌ Error running Instagram post generation: {e.stderr}", err=True)
+        sys.exit(1)
+
 @agent.command('stock_analysis')
 @click.option('--symbol', required=True, help='Stock ticker symbol (e.g., "AAPL")')
 @click.option('--openai-api-key', envvar='OPENAI_API_KEY', help='OpenAI API key')

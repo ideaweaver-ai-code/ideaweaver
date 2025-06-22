@@ -18,6 +18,7 @@ A comprehensive CLI tool for AI model training, evaluation, and deployment with 
 - **Advanced RAG** - Traditional + Agentic RAG with multiple vector stores,RAGAS
 - **Flexible Training** - LoRA, QLoRA, and full fine-tuning support
 - **Comprehensive Evaluation** - Built-in benchmarks + custom metrics
+- **Docker & Kubernetes** - Containerize and deploy models with FastAPI servers
 - **MCP Integration** - GitHub, Terraform and AWS integrations
 - **Multi-Agent Workflows** - CrewAI pipeline support
 - **Configuration Validation** - YAML validation and schema checking
@@ -161,6 +162,132 @@ ideaweaver evaluate ./downloaded_model \
 
 ```bash
 ideaweaver agent generate_storybook --theme "brave little mouse" --target-age "3-5"
+```
+
+## 🐳 Docker & Kubernetes Deployment
+
+After training a model with IdeaWeaver, you can containerize and deploy it to Kubernetes for production use.
+
+### Prerequisites
+
+Install the required tools:
+
+```bash
+# Install Docker (macOS with Homebrew)
+brew install docker
+
+# Install kind (Kubernetes in Docker)
+brew install kind
+
+# Install kubectl
+brew install kubectl
+```
+
+### Quick Start - End-to-End Deployment
+
+Deploy a trained model in one command:
+
+```bash
+# Deploy a model end-to-end (Docker + Kubernetes)
+ideaweaver deploy-model \
+    --model-path ./my-model \
+    --deployment-name my-model-api \
+    --verbose
+```
+
+This command will:
+- Build a Docker image with your model and FastAPI server
+- Create a kind cluster (if it doesn't exist)
+- Deploy the model to Kubernetes
+- Expose the API on http://localhost:30080
+
+### Step-by-Step Deployment
+
+For more control, you can do each step manually:
+
+#### 1. Build Docker Image
+
+```bash
+# Build Docker image for your trained model
+ideaweaver docker build \
+    --model-path ./my-model \
+    --image-name my-model:latest \
+    --port 8000 \
+    --verbose
+```
+
+#### 2. Create Kubernetes Cluster
+
+```bash
+# Create a kind cluster
+ideaweaver k8s create-cluster \
+    --cluster-name ideaweaver-cluster \
+    --verbose
+```
+
+#### 3. Deploy to Kubernetes
+
+```bash
+# Deploy the Docker image to Kubernetes
+ideaweaver k8s deploy \
+    --image-name my-model:latest \
+    --deployment-name my-model-api \
+    --replicas 1 \
+    --verbose
+```
+
+### Docker Commands
+
+```bash
+# Build model image
+ideaweaver docker build --model-path ./path/to/model --image-name my-model:latest
+
+# Run container locally
+ideaweaver docker run --image-name my-model:latest --port-mapping 8000:8000
+
+# List images
+ideaweaver docker list
+
+# Remove image
+ideaweaver docker remove --image-name my-model:latest
+```
+
+### Kubernetes Commands
+
+```bash
+# Cluster management
+ideaweaver k8s create-cluster --cluster-name ideaweaver-cluster
+ideaweaver k8s delete-cluster --cluster-name ideaweaver-cluster
+ideaweaver k8s cluster-info
+
+# Model deployment
+ideaweaver k8s deploy --image-name my-model:latest --deployment-name my-model-api
+ideaweaver k8s undeploy --deployment-name my-model-api
+ideaweaver k8s list-deployments
+```
+
+### API Usage
+
+Once deployed, your model exposes a FastAPI server:
+
+```bash
+# Health check
+curl http://localhost:30080/health
+
+# Model information
+curl http://localhost:30080/info
+
+# Text generation
+curl -X POST http://localhost:30080/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Hello, how are you?",
+    "max_length": 50,
+    "temperature": 0.7
+  }'
+
+# Interactive API docs
+# Visit: http://localhost:30080/docs
 ```
 
 ## 🔧 Official Documentation

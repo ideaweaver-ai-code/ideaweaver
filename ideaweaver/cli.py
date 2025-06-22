@@ -160,6 +160,8 @@ from .rag_evaluator import RAGEvaluator, RAGEvaluationConfig
 from .agentic_rag import AgenticRAGManager, AgenticRAGConfig
 from .fine_tuner import SupervisedFineTuner, FineTuningConfig, create_fine_tuning_config
 from .mcp import MCPManager, MCPServerConfig, get_mcp_manager, execute_mcp_tool, format_mcp_result
+from .docker_manager import DockerManager, build_model_docker_image
+from .k8s_manager import KubernetesManager, deploy_model_to_kind
 from pathlib import Path
 
 def _suppress_all_warnings():
@@ -2871,135 +2873,383 @@ def check_llm_status():
 # Add the agent group to the main CLI
 cli.add_command(agent)
 
-# @cli.group()
-# def bedrock():
-#     """AWS Bedrock integration commands"""
-#     pass
 
-# @bedrock.command('setup-guide')
-# def bedrock_setup_guide():
-#     """Show AWS Bedrock setup instructions"""
-#     try:
-#         from .trainer import ModelTrainer
-#         trainer = ModelTrainer({}, verbose=False)
-#         trainer.show_bedrock_setup_guide()
-#     except Exception as e:
-#         click.echo(f"Error displaying setup guide: {e}", err=True)
+# Docker Management Commands
+@cli.group()
+def docker():
+    """Docker operations for trained models"""
+    pass
 
-# @bedrock.command('validate-model')
-# @click.argument('model_path')
-# @click.option('--verbose', '-v', is_flag=True, help='Verbose output')
-# def validate_bedrock_model(model_path, verbose):
-#     """Validate if a model is compatible with AWS Bedrock"""
-#     try:
-#         from .aws_bedrock import BedrockModelImporter
+@docker.command('build')
+@click.option('--model-path', '-m', required=True, help='Path to trained model directory')
+@click.option('--image-name', '-i', required=True, help='Docker image name (e.g., my-model:latest)')
+@click.option('--base-image', '-b', default='python:3.9-slim', help='Base Docker image')
+@click.option('--port', '-p', type=int, default=8000, help='Port to expose in container')
+@click.option('--requirements', help='Comma-separated list of additional Python packages')
+@click.option('--dockerfile', help='Path to custom Dockerfile template')
+@click.option('--verbose', '-v', is_flag=True, help='Verbose output')
+def build_docker_image(model_path, image_name, base_image, port, requirements, dockerfile, verbose):
+    """Build Docker image for a trained model"""
+    try:
+        additional_reqs = requirements.split(',') if requirements else None
         
-#         click.echo(f"🔍 Validating model for Bedrock compatibility: {model_path}")
+        success = build_model_docker_image(
+            model_path=model_path,
+            image_name=image_name,
+            base_image=base_image,
+            port=port,
+            requirements=additional_reqs,
+            custom_dockerfile=dockerfile,
+            verbose=verbose
+        )
         
-#         importer = BedrockModelImporter()
-        
-#         # Check architecture
-#         arch_valid = importer.validate_model_architecture(model_path)
-#         if arch_valid:
-#             click.echo("✅ Model architecture appears compatible")
-#         else:
-#             click.echo("❌ Model architecture may not be supported")
-        
-#         # Check files
-#         file_validation = importer.validate_model_files(model_path)
-        
-#         click.echo("\n📁 File validation results:")
-#         for file_type, exists in file_validation.items():
-#             status = "✅" if exists else "❌"
-#             click.echo(f"   {status} {file_type}")
-        
-#         required_files = ['safetensors', 'config', 'tokenizer_config', 'tokenizer_json']
-#         missing_files = [f for f in required_files if not file_validation[f]]
-        
-#         if missing_files:
-#             click.echo(f"\n❌ Missing required files: {missing_files}")
-#             click.echo("   Models must have .safetensors, config.json, tokenizer_config.json, tokenizer.json")
-#         else:
-#             click.echo("\n✅ All required files present!")
+        if success:
+            click.echo(f"\n🎉 Docker image built successfully!")
+            click.echo(f"   Image: {image_name}")
+            click.echo(f"   Model: {model_path}")
+            click.echo(f"\n🚀 To run the container:")
+            click.echo(f"   docker run -p 8000:{port} {image_name}")
+            click.echo(f"\n🔍 To test the API:")
+            click.echo(f"   curl http://localhost:8000/health")
+        else:
+            click.echo("❌ Failed to build Docker image")
+            sys.exit(1)
             
-#         # Check model size
-#         try:
-#             import os
-#             from pathlib import Path
-            
-#             model_dir = Path(model_path)
-#             total_size = sum(f.stat().st_size for f in model_dir.rglob('*') if f.is_file())
-#             size_gb = total_size / (1024**3)
-            
-#             click.echo(f"\n📏 Model size: {size_gb:.2f} GB")
-            
-#             if size_gb > 200:
-#                 click.echo("❌ Model too large for Bedrock (max 200GB for text models)")
-#             elif size_gb > 100:
-#                 click.echo("⚠️  Model may be too large for multimodal support (max 100GB)")
-#             else:
-#                 click.echo("✅ Model size is within Bedrock limits")
-                
-#         except Exception as e:
-#             if verbose:
-#                 click.echo(f"⚠️  Could not calculate model size: {e}")
-        
-#     except ImportError:
-#         click.echo("❌ AWS Bedrock integration not available. Install with: pip install boto3", err=True)
-#     except Exception as e:
-#         click.echo(f"❌ Validation error: {e}", err=True)
-#         if verbose:
-#             import traceback
-#             traceback.print_exc()
+    except Exception as e:
+        click.echo(f"❌ Error: {str(e)}")
+        sys.exit(1)
 
-# @bedrock.command('test-import')
-# @click.argument('model_path')
-# @click.option('--model-name', required=True, help='Bedrock model name')
-# @click.option('--s3-bucket', required=True, help='S3 bucket for model storage')
-# @click.option('--role-arn', required=True, help='IAM role ARN for Bedrock import')
-# @click.option('--region', default='us-east-1', help='AWS region')
-# @click.option('--s3-prefix', help='S3 prefix/folder for model files')
-# @click.option('--job-name', help='Custom import job name')
-# @click.option('--test-inference', is_flag=True, default=True, help='Test model inference after import')
-# @click.option('--verbose', '-v', is_flag=True, help='Verbose output')
-# def test_bedrock_import(model_path, model_name, s3_bucket, role_arn, region, 
-#                        s3_prefix, job_name, test_inference, verbose):
-#     """Test importing a model to AWS Bedrock"""
-#     try:
-#         from .aws_bedrock import BedrockModelImporter
+@docker.command('run')
+@click.option('--image-name', '-i', required=True, help='Docker image name to run')
+@click.option('--container-name', '-n', help='Container name')
+@click.option('--port-mapping', '-p', default='8000:8000', help='Port mapping (host:container)')
+@click.option('--detached', '-d', is_flag=True, default=True, help='Run in detached mode')
+@click.option('--verbose', '-v', is_flag=True, help='Verbose output')
+def run_docker_container(image_name, container_name, port_mapping, detached, verbose):
+    """Run a Docker container from built image"""
+    try:
+        # Use a dummy model path for manager initialization
+        manager = DockerManager(".", verbose=verbose)
         
-#         click.echo(f"🚀 Testing Bedrock import for model: {model_path}")
+        success = manager.run_container(
+            image_name=image_name,
+            container_name=container_name,
+            port_mapping=port_mapping,
+            detached=detached
+        )
         
-#         importer = BedrockModelImporter(region_name=region)
-        
-#         results = importer.import_model_to_bedrock(
-#             model_path=model_path,
-#             model_name=model_name,
-#             s3_bucket=s3_bucket,
-#             role_arn=role_arn,
-#             s3_prefix=s3_prefix,
-#             job_name=job_name,
-#             test_inference=test_inference
-#         )
-        
-#         if results['status'] == 'COMPLETED':
-#             click.echo("✅ Bedrock import test completed successfully!")
-#             click.echo(f"🎯 Model ID: {results['model_id']}")
+        if success:
+            host_port = port_mapping.split(':')[0]
+            click.echo(f"\n🎉 Container started successfully!")
+            click.echo(f"   Container: {container_name or 'auto-generated'}")
+            click.echo(f"   Access URL: http://localhost:{host_port}")
+            click.echo(f"   Health Check: http://localhost:{host_port}/health")
+            click.echo(f"   API Docs: http://localhost:{host_port}/docs")
+        else:
+            sys.exit(1)
             
-#             if results.get('test_response'):
-#                 click.echo(f"🧪 Test response: {results['test_response']}")
-#         else:
-#             click.echo(f"❌ Bedrock import test failed: {results.get('error', 'Unknown error')}")
-            
-#     except ImportError:
-#         click.echo("❌ AWS Bedrock integration not available. Install with: pip install boto3", err=True)
-#     except Exception as e:
-#         click.echo(f"❌ Import test error: {e}", err=True)
-#         if verbose:
-#             import traceback
-#             traceback.print_exc()
+    except Exception as e:
+        click.echo(f"❌ Error: {str(e)}")
+        sys.exit(1)
 
-#cli.add_command(bedrock)
+@docker.command('list')
+@click.option('--verbose', '-v', is_flag=True, help='Verbose output')
+def list_docker_images(verbose):
+    """List Docker images for IdeaWeaver models"""
+    try:
+        # Use a dummy model path for manager initialization
+        manager = DockerManager(".", verbose=verbose)
+        
+        images = manager.list_images()
+        
+        if images:
+            click.echo("📋 IdeaWeaver Docker Images:")
+            for image in images:
+                click.echo(f"   {image.get('Repository', 'N/A')}:{image.get('Tag', 'N/A')}")
+                if verbose:
+                    click.echo(f"     ID: {image.get('ID', 'N/A')}")
+                    click.echo(f"     Size: {image.get('Size', 'N/A')}")
+                    click.echo(f"     Created: {image.get('CreatedAt', 'N/A')}")
+        else:
+            click.echo("ℹ️  No IdeaWeaver Docker images found")
+            
+    except Exception as e:
+        click.echo(f"❌ Error: {str(e)}")
+
+@docker.command('remove')
+@click.option('--image-name', '-i', required=True, help='Docker image name to remove')
+@click.option('--verbose', '-v', is_flag=True, help='Verbose output')
+def remove_docker_image(image_name, verbose):
+    """Remove a Docker image"""
+    try:
+        # Use a dummy model path for manager initialization
+        manager = DockerManager(".", verbose=verbose)
+        
+        success = manager.remove_image(image_name)
+        
+        if not success:
+            sys.exit(1)
+            
+    except Exception as e:
+        click.echo(f"❌ Error: {str(e)}")
+        sys.exit(1)
+
+
+# Kubernetes Management Commands
+@cli.group()
+def k8s():
+    """Kubernetes operations for model deployment"""
+    pass
+
+@k8s.command('create-cluster')
+@click.option('--cluster-name', '-c', default='ideaweaver-cluster', help='Kind cluster name')
+@click.option('--verbose', '-v', is_flag=True, help='Verbose output')
+def create_k8s_cluster(cluster_name, verbose):
+    """Create a kind Kubernetes cluster"""
+    try:
+        manager = KubernetesManager(cluster_name, verbose=verbose)
+        
+        success = manager.create_kind_cluster()
+        
+        if success:
+            click.echo(f"\n🎉 Kubernetes cluster created successfully!")
+            click.echo(f"   Cluster: {cluster_name}")
+            click.echo(f"   Context: kind-{cluster_name}")
+            click.echo(f"\n🔍 Useful Commands:")
+            click.echo(f"   kubectl get nodes")
+            click.echo(f"   kubectl get pods --all-namespaces")
+        else:
+            sys.exit(1)
+            
+    except Exception as e:
+        click.echo(f"❌ Error: {str(e)}")
+        sys.exit(1)
+
+@k8s.command('delete-cluster')
+@click.option('--cluster-name', '-c', default='ideaweaver-cluster', help='Kind cluster name')
+@click.option('--verbose', '-v', is_flag=True, help='Verbose output')
+def delete_k8s_cluster(cluster_name, verbose):
+    """Delete a kind Kubernetes cluster"""
+    try:
+        manager = KubernetesManager(cluster_name, verbose=verbose)
+        
+        success = manager.delete_kind_cluster()
+        
+        if not success:
+            sys.exit(1)
+            
+    except Exception as e:
+        click.echo(f"❌ Error: {str(e)}")
+        sys.exit(1)
+
+@k8s.command('deploy')
+@click.option('--image-name', '-i', required=True, help='Docker image name to deploy')
+@click.option('--deployment-name', '-d', required=True, help='Kubernetes deployment name')
+@click.option('--cluster-name', '-c', default='ideaweaver-cluster', help='Kind cluster name')
+@click.option('--namespace', '-n', default='default', help='Kubernetes namespace')
+@click.option('--replicas', '-r', type=int, default=1, help='Number of replicas')
+@click.option('--port', '-p', type=int, default=8000, help='Container port')
+@click.option('--node-port', type=int, default=30080, help='NodePort port number')
+@click.option('--cpu-limit', help='CPU limit (e.g., 500m, 1)')
+@click.option('--memory-limit', help='Memory limit (e.g., 512Mi, 1Gi)')
+@click.option('--verbose', '-v', is_flag=True, help='Verbose output')
+def deploy_to_k8s(image_name, deployment_name, cluster_name, namespace, replicas, 
+                  port, node_port, cpu_limit, memory_limit, verbose):
+    """Deploy model Docker image to Kubernetes cluster"""
+    try:
+        # Prepare resource limits
+        resource_limits = {}
+        if cpu_limit:
+            resource_limits['cpu'] = cpu_limit
+        if memory_limit:
+            resource_limits['memory'] = memory_limit
+        
+        success = deploy_model_to_kind(
+            image_name=image_name,
+            deployment_name=deployment_name,
+            cluster_name=cluster_name,
+            namespace=namespace,
+            replicas=replicas,
+            port=port,
+            node_port=node_port,
+            resource_limits=resource_limits if resource_limits else None,
+            verbose=verbose
+        )
+        
+        if success:
+            click.echo(f"\n🎉 Model deployed to Kubernetes successfully!")
+        else:
+            sys.exit(1)
+            
+    except Exception as e:
+        click.echo(f"❌ Error: {str(e)}")
+        sys.exit(1)
+
+@k8s.command('undeploy')
+@click.option('--deployment-name', '-d', required=True, help='Kubernetes deployment name')
+@click.option('--cluster-name', '-c', default='ideaweaver-cluster', help='Kind cluster name')
+@click.option('--namespace', '-n', default='default', help='Kubernetes namespace')
+@click.option('--verbose', '-v', is_flag=True, help='Verbose output')
+def undeploy_from_k8s(deployment_name, cluster_name, namespace, verbose):
+    """Remove model deployment from Kubernetes cluster"""
+    try:
+        manager = KubernetesManager(cluster_name, verbose=verbose)
+        
+        success = manager.undeploy_model(deployment_name, namespace)
+        
+        if not success:
+            sys.exit(1)
+            
+    except Exception as e:
+        click.echo(f"❌ Error: {str(e)}")
+        sys.exit(1)
+
+@k8s.command('list-deployments')
+@click.option('--cluster-name', '-c', default='ideaweaver-cluster', help='Kind cluster name')
+@click.option('--namespace', '-n', default='default', help='Kubernetes namespace')
+@click.option('--verbose', '-v', is_flag=True, help='Verbose output')
+def list_k8s_deployments(cluster_name, namespace, verbose):
+    """List IdeaWeaver deployments in Kubernetes cluster"""
+    try:
+        manager = KubernetesManager(cluster_name, verbose=verbose)
+        
+        deployments = manager.list_deployments(namespace)
+        
+        if deployments:
+            click.echo("📋 IdeaWeaver Kubernetes Deployments:")
+            for dep in deployments:
+                status = f"{dep['ready_replicas']}/{dep['replicas']}"
+                click.echo(f"   {dep['name']} (namespace: {dep['namespace']}, replicas: {status})")
+                if verbose:
+                    click.echo(f"     Created: {dep['created']}")
+        else:
+            click.echo("ℹ️  No IdeaWeaver deployments found")
+            
+    except Exception as e:
+        click.echo(f"❌ Error: {str(e)}")
+
+@k8s.command('cluster-info')
+@click.option('--cluster-name', '-c', default='ideaweaver-cluster', help='Kind cluster name')
+@click.option('--verbose', '-v', is_flag=True, help='Verbose output')
+def show_cluster_info(cluster_name, verbose):
+    """Show information about the Kubernetes cluster"""
+    try:
+        manager = KubernetesManager(cluster_name, verbose=verbose)
+        
+        info = manager.get_cluster_info()
+        
+        click.echo(f"📋 Cluster Information:")
+        click.echo(f"   Name: {info['cluster_name']}")
+        click.echo(f"   Exists: {info['exists']}")
+        
+        if info['exists']:
+            click.echo(f"   Context: {info['context']}")
+            if 'nodes' in info:
+                click.echo(f"   Nodes: {info['nodes']}")
+            
+            if verbose and 'cluster_info' in info:
+                click.echo(f"\n🔍 Cluster Details:")
+                click.echo(info['cluster_info'])
+        elif 'error' in info:
+            click.echo(f"   Error: {info['error']}")
+            
+    except Exception as e:
+        click.echo(f"❌ Error: {str(e)}")
+
+
+# Combined deployment command
+@cli.command('deploy-model')
+@click.option('--model-path', '-m', required=True, help='Path to trained model directory')
+@click.option('--deployment-name', '-d', required=True, help='Name for the deployment')
+@click.option('--image-name', '-i', help='Docker image name (auto-generated if not provided)')
+@click.option('--cluster-name', '-c', default='ideaweaver-cluster', help='Kind cluster name')
+@click.option('--namespace', '-n', default='default', help='Kubernetes namespace')
+@click.option('--replicas', '-r', type=int, default=1, help='Number of replicas')
+@click.option('--port', '-p', type=int, default=8000, help='Container port')
+@click.option('--node-port', type=int, default=30080, help='NodePort port number')
+@click.option('--base-image', '-b', default='python:3.9-slim', help='Base Docker image')
+@click.option('--requirements', help='Comma-separated list of additional Python packages')
+@click.option('--cpu-limit', help='CPU limit (e.g., 500m, 1)')
+@click.option('--memory-limit', help='Memory limit (e.g., 512Mi, 1Gi)')
+@click.option('--skip-docker-build', is_flag=True, help='Skip Docker image building (use existing image)')
+@click.option('--verbose', '-v', is_flag=True, help='Verbose output')
+def deploy_model_end_to_end(model_path, deployment_name, image_name, cluster_name, 
+                           namespace, replicas, port, node_port, base_image, 
+                           requirements, cpu_limit, memory_limit, skip_docker_build, verbose):
+    """Deploy a trained model end-to-end (Docker + Kubernetes)"""
+    try:
+        # Generate image name if not provided
+        if not image_name:
+            image_name = f"ideaweaver-{deployment_name}:latest"
+        
+        click.echo(f"🚀 Starting end-to-end model deployment...")
+        click.echo(f"   Model: {model_path}")
+        click.echo(f"   Deployment: {deployment_name}")
+        click.echo(f"   Image: {image_name}")
+        click.echo(f"   Cluster: {cluster_name}")
+        
+        # Step 1: Build Docker image (unless skipped)
+        if not skip_docker_build:
+            click.echo(f"\n📦 Step 1: Building Docker image...")
+            
+            additional_reqs = requirements.split(',') if requirements else None
+            
+            success = build_model_docker_image(
+                model_path=model_path,
+                image_name=image_name,
+                base_image=base_image,
+                port=port,
+                requirements=additional_reqs,
+                verbose=verbose
+            )
+            
+            if not success:
+                click.echo("❌ Failed to build Docker image")
+                sys.exit(1)
+        else:
+            click.echo(f"\n📦 Step 1: Skipping Docker build (using existing image)")
+        
+        # Step 2: Deploy to Kubernetes
+        click.echo(f"\n☸️  Step 2: Deploying to Kubernetes...")
+        
+        # Prepare resource limits
+        resource_limits = {}
+        if cpu_limit:
+            resource_limits['cpu'] = cpu_limit
+        if memory_limit:
+            resource_limits['memory'] = memory_limit
+        
+        success = deploy_model_to_kind(
+            image_name=image_name,
+            deployment_name=deployment_name,
+            cluster_name=cluster_name,
+            namespace=namespace,
+            replicas=replicas,
+            port=port,
+            node_port=node_port,
+            resource_limits=resource_limits if resource_limits else None,
+            verbose=verbose
+        )
+        
+        if success:
+            click.echo(f"\n🎉 End-to-end deployment completed successfully!")
+            click.echo(f"\n🔗 Quick Access:")
+            click.echo(f"   API: http://localhost:{node_port}")
+            click.echo(f"   Health: http://localhost:{node_port}/health")
+            click.echo(f"   Docs: http://localhost:{node_port}/docs")
+            
+            click.echo(f"\n🧪 Test the API:")
+            click.echo(f"   curl -X POST http://localhost:{node_port}/generate \\")
+            click.echo(f"        -H 'Content-Type: application/json' \\")
+            click.echo(f"        -d '{{\"text\": \"Hello, how are you?\", \"max_length\": 50}}'")
+        else:
+            click.echo("❌ Failed to deploy to Kubernetes")
+            sys.exit(1)
+            
+    except Exception as e:
+        click.echo(f"❌ Error: {str(e)}")
+        sys.exit(1)
+
 
 if __name__ == '__main__':
     cli() 

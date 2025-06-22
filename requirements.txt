@@ -86,3 +86,7 @@ urllib3>=1.26.5
 # Evaluation and Metrics
 ragas>=0.1.0
 lm_eval>=0.4.0
+
+# Docker and Kubernetes dependencies
+docker>=6.1.0
+kubernetes>=27.2.0

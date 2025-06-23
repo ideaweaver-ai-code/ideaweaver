@@ -1,3 +1,0 @@
-crewai>=0.35.0
-langchain-openai>=0.1.0
-requests>=2.31.0 

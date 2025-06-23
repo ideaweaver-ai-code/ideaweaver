@@ -2908,27 +2908,149 @@ def travel_plan(destination, duration, budget, preferences, openai_api_key):
 
 @agent.command('check-llm')
 def check_llm_status():
-    """Check the status and availability of language model providers.
+    """Check the status and availability of language model providers (Ollama and OpenAI).
     
+    \b
     This command verifies:
-    - Local model availability (Ollama)
-    - API access (OpenAI)
-    - Model capabilities
-    - Connection status
+    • Ollama server connectivity and available models
+    • OpenAI API key configuration and accessibility
+    • Model recommendations for optimal performance
     
-    Useful for troubleshooting and ensuring required models are available
-    for agent operations.
+    \b
+    Examples:
+      ideaweaver agent check-llm
     """
-    from .crew_ai import setup_intelligent_llm
+    
+    click.echo("🔍 Checking LLM Provider Status...")
+    click.echo("="*60)
     
     try:
-        llm, llm_type, model_used = setup_intelligent_llm()
-        click.echo(f"\n✅ LLM Status:")
-        click.echo(f"   Provider: {llm_type}")
-        click.echo(f"   Model: {model_used}")
-        click.echo(f"   Status: Connected and ready")
+        from .crew_ai import setup_intelligent_llm, get_available_ollama_models
+        
+        # Check Ollama first
+        click.echo("\n🤖 Checking Ollama (Local LLM)...")
+        try:
+            import requests
+            response = requests.get("http://localhost:11434/api/tags", timeout=5)
+            if response.status_code == 200:
+                models_data = response.json()
+                available_models = [model['name'] for model in models_data.get('models', [])]
+                
+                if available_models:
+                    click.echo("✅ Ollama is running and accessible")
+                    click.echo(f"📋 Available models ({len(available_models)}):")
+                    for model in available_models[:5]:  # Show first 5
+                        click.echo(f"   • {model}")
+                    if len(available_models) > 5:
+                        click.echo(f"   ... and {len(available_models) - 5} more")
+                else:
+                    click.echo("⚠️ Ollama is running but no models installed")
+                    click.echo("💡 Install a model: ollama pull phi3:mini")
+            else:
+                click.echo("❌ Ollama is not responding properly")
+        except Exception as e:
+            click.echo("❌ Ollama is not available")
+            click.echo(f"   Error: {e}")
+            click.echo("💡 Install Ollama: https://ollama.ai")
+        
+        # Check OpenAI
+        click.echo("\n🌐 Checking OpenAI (Cloud LLM)...")
+        openai_key = os.environ.get("OPENAI_API_KEY")
+        if openai_key:
+            try:
+                from langchain_openai import ChatOpenAI
+                llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0.7)
+                click.echo("✅ OpenAI API key is configured")
+                click.echo("📋 Default model: gpt-4o-mini")
+            except Exception as e:
+                click.echo("❌ OpenAI API key is invalid or inaccessible")
+                click.echo(f"   Error: {e}")
+        else:
+            click.echo("⚠️ OpenAI API key not configured")
+            click.echo("💡 Set environment variable: export OPENAI_API_KEY=your_key")
+        
+        # Overall recommendation
+        click.echo("\n🎯 Recommendations:")
+        if get_available_ollama_models():
+            click.echo("✅ Use Ollama for fast, local inference (recommended)")
+            click.echo("💡 Ollama is preferred for privacy and speed")
+        elif openai_key:
+            click.echo("✅ Use OpenAI for cloud-based inference")
+            click.echo("💡 Consider installing Ollama for local inference")
+        else:
+            click.echo("❌ No LLM provider available")
+            click.echo("💡 Install Ollama or configure OpenAI API key")
+        
+        click.echo("="*60)
+        
     except Exception as e:
         click.echo(f"❌ Error checking LLM status: {e}", err=True)
+        sys.exit(1)
+
+@agent.command('system_diagnostics')
+@click.option('--openai-api-key', envvar='OPENAI_API_KEY', help='OpenAI API key')
+@click.option('--verbose', '-v', is_flag=True, help='Verbose output')
+def system_diagnostics(openai_api_key, verbose):
+    """Run comprehensive Linux system diagnostics and get optimization recommendations.
+    
+    This command uses two specialized agents:
+    1. System Diagnostic Specialist - executes Linux diagnostic commands
+    2. System Performance Advisor - analyzes results and provides recommendations
+    
+    \b
+    The diagnostic process includes:
+    • CPU and load analysis (w command)
+    • Memory usage analysis (free -m command) 
+    • Network interface analysis (ip commands, ss command)
+    • Process and I/O analysis (top command)
+    
+    \b
+    Examples:
+      ideaweaver agent system_diagnostics
+      ideaweaver agent system_diagnostics --verbose
+      ideaweaver agent system_diagnostics --openai-api-key your_api_key
+    """
+    
+    click.echo("🔧 Starting System Diagnostics Analysis...")
+    click.echo("🤖 Initializing diagnostic agents...")
+    click.echo(f"📋 LLM Priority: Ollama (local) → OpenAI (cloud)")
+    
+    try:
+        # Import only when needed
+        from .crew_ai import SystemDiagnosticGenerator
+        
+        generator = SystemDiagnosticGenerator(openai_api_key=openai_api_key)
+        result = generator.run_system_diagnostics(verbose=verbose)
+        
+        if result['success']:
+            # Format and display the diagnostic output
+            diagnostic_content = result['diagnostic_output']
+            formatted_content = generator._format_diagnostic_output(diagnostic_content)
+            
+            click.echo("\n" + "="*80)
+            click.echo("🔍 SYSTEM DIAGNOSTIC REPORT")
+            click.echo(f"🤖 Generated by: {result['llm_used']}")
+            click.echo(f"👥 Agents: {', '.join(result['agents_used'])}")
+            click.echo("="*80)
+            click.echo(formatted_content)
+            click.echo("="*80)
+            
+            # Provide additional guidance
+            click.echo("\n💡 Next Steps:")
+            click.echo("• Review the recommendations above")
+            click.echo("• Execute suggested commands to optimize performance") 
+            click.echo("• Monitor system performance after implementing changes")
+            click.echo("• Run diagnostics again to verify improvements")
+            
+        else:
+            click.echo(f"❌ Error running system diagnostics: {result['error']}")
+            click.echo("\n🔧 Troubleshooting:")
+            click.echo("• Ensure you have necessary permissions to run system commands")
+            click.echo("• Check if required diagnostic tools are installed (top, free, ip, ss)")
+            click.echo("• Verify LLM connectivity (Ollama local or OpenAI API key)")
+            
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
         sys.exit(1)
 
 # Add the agent group to the main CLI

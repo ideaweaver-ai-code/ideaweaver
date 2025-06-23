@@ -1618,3 +1618,295 @@ class StockAnalysisGenerator:
 ⚠️ This analysis is for informational purposes only and not financial advice.
 """
         return header + str(content).strip() + footer 
+
+class SystemDiagnosticGenerator:
+    """
+    System Diagnostic Generator using CrewAI agents
+    
+    This class creates two agents:
+    1. System Diagnostic Agent - executes actual Linux/macOS system diagnostic commands
+    2. System Advisory Agent - provides recommendations based on real diagnostic output
+    """
+    
+    def __init__(self, openai_api_key: Optional[str] = None):
+        """Initialize the System Diagnostic Generator"""
+        self.llm, self.llm_type, self.model_name = setup_intelligent_llm(openai_api_key)
+        print(f"🔧 System Diagnostic Generator initialized with {self.llm_type} ({self.model_name})")
+    
+    def _execute_system_commands(self) -> Dict[str, str]:
+        """Execute actual system diagnostic commands and return their output"""
+        import subprocess
+        import platform
+        
+        results = {}
+        system = platform.system()
+        
+        try:
+            # 1. CPU & Load Analysis - 'w' command (works on both Linux and macOS)
+            print("🖥️  Executing CPU & Load analysis...")
+            try:
+                result = subprocess.run(['w'], capture_output=True, text=True, timeout=10)
+                results['cpu_load'] = {
+                    'command': 'w',
+                    'output': result.stdout if result.returncode == 0 else result.stderr,
+                    'success': result.returncode == 0
+                }
+            except Exception as e:
+                results['cpu_load'] = {
+                    'command': 'w',
+                    'output': f"Error executing 'w': {str(e)}",
+                    'success': False
+                }
+            
+            # 2. Memory Analysis - different commands for different systems
+            print("🧠 Executing Memory analysis...")
+            if system == "Darwin":  # macOS
+                try:
+                    # Use vm_stat for macOS
+                    result = subprocess.run(['vm_stat'], capture_output=True, text=True, timeout=10)
+                    results['memory'] = {
+                        'command': 'vm_stat',
+                        'output': result.stdout if result.returncode == 0 else result.stderr,
+                        'success': result.returncode == 0
+                    }
+                except Exception as e:
+                    results['memory'] = {
+                        'command': 'vm_stat',
+                        'output': f"Error executing 'vm_stat': {str(e)}",
+                        'success': False
+                    }
+            else:  # Linux
+                try:
+                    result = subprocess.run(['free', '-m'], capture_output=True, text=True, timeout=10)
+                    results['memory'] = {
+                        'command': 'free -m',
+                        'output': result.stdout if result.returncode == 0 else result.stderr,
+                        'success': result.returncode == 0
+                    }
+                except Exception as e:
+                    results['memory'] = {
+                        'command': 'free -m',
+                        'output': f"Error executing 'free -m': {str(e)}",
+                        'success': False
+                    }
+            
+            # 3. Network Analysis - use ip or ifconfig
+            print("🌐 Executing Network analysis...")
+            network_commands = []
+            if system == "Darwin":  # macOS
+                network_commands = [
+                    (['ifconfig'], 'ifconfig'),
+                    (['netstat', '-rn'], 'netstat -rn'),  # routing table
+                    (['netstat', '-an'], 'netstat -an')   # active connections
+                ]
+            else:  # Linux
+                network_commands = [
+                    (['ip', 'addr', 'show'], 'ip addr show'),
+                    (['ip', 'route', 'show'], 'ip route show'),
+                    (['ss', '-tuln'], 'ss -tuln')
+                ]
+            
+            network_output = []
+            for cmd, cmd_str in network_commands:
+                try:
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                    if result.returncode == 0:
+                        network_output.append(f"=== {cmd_str} ===\n{result.stdout}")
+                    else:
+                        network_output.append(f"=== {cmd_str} (ERROR) ===\n{result.stderr}")
+                except Exception as e:
+                    network_output.append(f"=== {cmd_str} (FAILED) ===\nError: {str(e)}")
+            
+            results['network'] = {
+                'command': 'Network analysis commands',
+                'output': '\n\n'.join(network_output),
+                'success': len(network_output) > 0
+            }
+            
+            # 4. Process & I/O Analysis - top command
+            print("⚡ Executing Process & I/O analysis...")
+            try:
+                if system == "Darwin":  # macOS
+                    result = subprocess.run(['top', '-l', '1', '-n', '10'], capture_output=True, text=True, timeout=15)
+                else:  # Linux
+                    result = subprocess.run(['top', '-b', '-n1'], capture_output=True, text=True, timeout=15)
+                
+                results['processes'] = {
+                    'command': 'top -l 1 -n 10' if system == "Darwin" else 'top -b -n1',
+                    'output': result.stdout if result.returncode == 0 else result.stderr,
+                    'success': result.returncode == 0
+                }
+            except Exception as e:
+                results['processes'] = {
+                    'command': 'top',
+                    'output': f"Error executing 'top': {str(e)}",
+                    'success': False
+                }
+            
+            # 5. Additional macOS-specific commands
+            if system == "Darwin":
+                print("🍎 Executing macOS-specific diagnostics...")
+                try:
+                    # Get CPU core count
+                    result = subprocess.run(['sysctl', '-n', 'hw.ncpu'], capture_output=True, text=True, timeout=5)
+                    cpu_cores = result.stdout.strip() if result.returncode == 0 else "unknown"
+                    
+                    # Get system uptime and load with CPU context
+                    result = subprocess.run(['uptime'], capture_output=True, text=True, timeout=5)
+                    uptime_output = result.stdout.strip() if result.returncode == 0 else "unknown"
+                    
+                    results['system_info'] = {
+                        'command': 'System Information',
+                        'output': f"CPU Cores: {cpu_cores}\nUptime: {uptime_output}",
+                        'success': True
+                    }
+                except Exception as e:
+                    results['system_info'] = {
+                        'command': 'System Information',
+                        'output': f"Error getting system info: {str(e)}",
+                        'success': False
+                    }
+            
+        except Exception as e:
+            results['error'] = {
+                'command': 'System Diagnostics',
+                'output': f"General error: {str(e)}",
+                'success': False
+            }
+        
+        return results
+    
+    def run_system_diagnostics(self, verbose: bool = False) -> Dict:
+        """
+        Run comprehensive system diagnostics and provide recommendations
+        
+        Returns:
+            Dict containing diagnostic results and recommendations
+        """
+        try:
+            # Execute actual system commands first
+            command_results = self._execute_system_commands()
+            
+            # Prepare diagnostic data for the agent
+            diagnostic_data = "=== REAL SYSTEM DIAGNOSTIC OUTPUT ===\n\n"
+            for section, data in command_results.items():
+                diagnostic_data += f"📋 {section.upper()} DIAGNOSTICS:\n"
+                diagnostic_data += f"Command: {data['command']}\n"
+                diagnostic_data += f"Status: {'SUCCESS' if data['success'] else 'FAILED'}\n"
+                diagnostic_data += f"Output:\n{data['output']}\n"
+                diagnostic_data += "=" * 60 + "\n\n"
+            
+            # Create advisory agent  
+            advisory_agent = Agent(
+                role="System Performance Advisor",
+                goal="Analyze REAL system diagnostic output and provide actionable recommendations for optimization",
+                backstory="""You are a senior systems performance consultant with decades of experience 
+                in both Linux and macOS system optimization. You excel in analyzing system metrics from 
+                diagnostic commands and translating technical data into clear, actionable recommendations. 
+                You understand the relationships between CPU load, memory usage, network performance, and 
+                I/O operations, and can identify performance bottlenecks and suggest specific solutions.
+                
+                IMPORTANT: You are analyzing REAL system output, not simulated data. Pay close attention 
+                to the actual values and system state provided.""",
+                verbose=verbose,
+                llm=self.llm,
+                allow_delegation=False
+            )
+            
+            # Create advisory task with real diagnostic data
+            advisory_task = Task(
+                description=f"""Analyze the following REAL system diagnostic output and provide comprehensive 
+recommendations for system optimization and performance improvement.
+
+ACTUAL SYSTEM DIAGNOSTIC DATA:
+{diagnostic_data}
+
+Based on this REAL diagnostic data, provide:
+
+1. **Overall System Health Assessment**: Evaluate the current system state based on actual metrics.
+
+2. **CPU & Load Analysis**: 
+   - Interpret the actual load averages shown
+   - Consider the number of CPU cores when assessing load
+   - Identify if the system is appropriately loaded or has issues
+
+3. **Memory Analysis**:
+   - Analyze the real memory usage data
+   - Identify any memory pressure or issues
+   - Provide specific recommendations based on actual usage
+
+4. **Network Analysis**: 
+   - Review actual network interface data
+   - Identify any network-related issues from real output
+   - Check actual network connections and ports
+
+5. **Process Analysis**:
+   - Identify actual processes consuming resources
+   - Analyze real I/O and CPU usage patterns
+   - Recommend specific actions based on actual process data
+
+6. **Actionable Recommendations**:
+   - Provide specific steps based on the actual system state
+   - Include real command examples where appropriate
+   - Focus on addressing issues found in the real data
+
+7. **Priority Assessment**: Rank recommendations by actual urgency based on real metrics
+
+IMPORTANT: Base all analysis on the actual command output provided, not on assumptions or generic advice.""",
+                agent=advisory_agent,
+                expected_output="""A comprehensive system analysis report based on REAL system data with:
+1. Executive Summary of actual system health
+2. Detailed analysis of each diagnostic area based on real metrics
+3. Prioritized list of actionable recommendations with specific commands
+4. Performance optimization suggestions based on actual system state
+5. Monitoring recommendations relevant to the current system
+
+Format with clear headers, bullet points, and priority indicators."""
+            )
+            
+            # Create and execute crew with just the advisory agent
+            crew = Crew(
+                agents=[advisory_agent],
+                tasks=[advisory_task],
+                process=Process.sequential,
+                verbose=verbose
+            )
+            
+            print("🔍 Analyzing real system diagnostics...")
+            result = crew.kickoff()
+            
+            return {
+                'success': True,
+                'diagnostic_output': str(result),
+                'raw_commands': command_results,
+                'llm_used': f"{self.llm_type} ({self.model_name})",
+                'agents_used': ['System Performance Advisor']
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e),
+                'llm_used': f"{self.llm_type} ({self.model_name})"
+            }
+    
+    def _format_diagnostic_output(self, content: str) -> str:
+        """Format the diagnostic output for better readability"""
+        # Clean up the content
+        clean_content = str(content)
+        clean_content = clean_content.replace('\\n', '\n')
+        clean_content = clean_content.replace('\\"', '"')
+        clean_content = clean_content.replace("\\'", "'")
+        
+        # Add proper formatting
+        clean_content = clean_content.replace('CPU & Load Analysis:', '\n🖥️  CPU & Load Analysis:\n' + '='*50)
+        clean_content = clean_content.replace('Memory Analysis:', '\n🧠 Memory Analysis:\n' + '='*50)
+        clean_content = clean_content.replace('Network Analysis:', '\n🌐 Network Analysis:\n' + '='*50)
+        clean_content = clean_content.replace('Process Analysis:', '\n⚡ Process Analysis:\n' + '='*50)
+        clean_content = clean_content.replace('Recommendations:', '\n💡 System Recommendations:\n' + '='*50)
+        
+        # Clean up excessive line breaks
+        import re
+        clean_content = re.sub(r'\n\s*\n\s*\n+', '\n\n', clean_content)
+        
+        return clean_content 

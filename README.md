@@ -164,6 +164,20 @@ ideaweaver evaluate ./downloaded_model \
 ideaweaver agent generate_storybook --theme "brave little mouse" --target-age "3-5"
 ```
 
+### System Diagnostics
+
+AI-powered system performance analysis with real command execution:
+
+```bash
+# Basic system diagnostics
+ideaweaver agent system_diagnostics
+
+# Detailed analysis with verbose output
+ideaweaver agent system_diagnostics --verbose --openai-api-key your_key
+```
+
+> 📋 **Comprehensive Documentation**: See [System Diagnostics README](README_SYSTEM_DIAGNOSTICS.md) for complete feature documentation, examples, and troubleshooting.
+
 ## 🐳 Docker & Kubernetes Deployment
 
 After training a model with IdeaWeaver, you can containerize and deploy it to Kubernetes for production use.
